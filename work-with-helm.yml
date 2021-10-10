@@ -1,0 +1,62 @@
+image: alpine/helm:3.7.0
+
+variables:
+  K8S_CURRENT_CONTEXT: k8s-cicd
+  K8S_CLUSTER_NAME: your-k8s-name
+  K8S_CLUSTER_CA: your-k8s-ca
+  K8S_CLUSTER_SERVER: https://your.k8s.apiserver:6443
+  K8S_USER_NAME: your-k8s-user
+  K8S_USER_CA: your-k8s-user-ca
+  K8S_USER_KEY: your-k8s-user-key
+
+before_script:
+  - mkdir -p /root/.kube
+  - cd /root/.kube
+  - |
+    cat << EOF > config
+    apiVersion: v1
+    kind: Config
+    current-context: ${K8S_CURRENT_CONTEXT}
+    contexts:
+    - name: ${K8S_CURRENT_CONTEXT}
+      context:
+        cluster: ${K8S_CLUSTER_NAME}
+        user: ${K8S_USER_NAME}
+    clusters:
+    - name: ${K8S_CLUSTER_NAME}
+      cluster:
+        certificate-authority-data: ${K8S_CLUSTER_CA}
+        server: ${K8S_CLUSTER_SERVER}
+    users:
+    - name: ${K8S_USER_NAME}
+      user:
+        client-certificate-data: ${K8S_USER_CA}
+        client-key-data: ${K8S_USER_KEY}
+    EOF
+  - chmod 600 /root/.kube/config
+
+stages:
+  - build
+  - deploy
+
+build_chart:
+  stage: build
+  script:
+    - helm package . --destination $CI_PROJECT_DIR
+  artifacts:
+    paths:
+      - "$CI_PROJECT_DIR/*.tgz"
+    expire_in: '1 days'
+
+install_chart:
+  stage: deploy
+  script:
+    - ls -lha $CI_PROJECT_DIR/
+    - |
+      helm upgrade RELEASE-NAME --install --namespace NAMESPACE -f VALUES-FILE.yaml $(ls *.tgz | sort | tail -n 1)
+      helm list --all-namespaces
+  dependencies:
+    - build_chart
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: manual
