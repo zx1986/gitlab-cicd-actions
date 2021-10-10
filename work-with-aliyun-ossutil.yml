@@ -1,0 +1,33 @@
+image: ghcr.io/larvatatw/aliyun-ossutil
+
+variables:
+  HTTP_PROXY: "http://your.squid.proxy:3128"
+  HTTPS_PROXY: "http://your.squid.proxy:3128"
+  NO_PROXY: "localhost,127.0.0.1,.internal.domain"
+  ALI_ACCESS_KEY_ID: aliyun-key-id
+  ALI_ACCESS_KEY_SECRET: aliyun-key-secret
+  ALI_DEFAULT_REGION: cn-hongkong
+  ALI_OSS_ENDPOINT: oss-cn-hongkong.aliyuncs.com
+  ALI_OSS_BUCKET: aliyun-oss-bucket-name
+
+before_script:
+  - touch /root/.ossutilconfig
+  - |
+    cat <<EOT >> /root/.ossutilconfig
+    [Credentials]
+    language=EN
+    accessKeyID=${ALI_ACCESS_KEY_ID}
+    accessKeySecret=${ALI_ACCESS_KEY_SECRET}
+    endpoint=${ALI_OSS_ENDPOINT}
+    EOT
+
+stages:
+  - deploy
+
+upload:
+  stage: deploy
+  script:
+    - rm -rf .git
+    - ossutil sync . oss://${ALI_OSS_BUCKET} --force --update --delete
+    - ossutil ls oss://${ALI_OSS_BUCKET}
+  allow_failure: false
