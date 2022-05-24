@@ -1,4 +1,4 @@
-# gitlab-ci-templates
+# Gtilab CICD Examples
 
 .gitlab-ci.yml examples for some scenairos when using Gitlab CI/CD.
 
